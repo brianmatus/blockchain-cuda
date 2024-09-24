@@ -1,31 +1,27 @@
-#ifndef BLOCK_H
-#define BLOCK_H
-
+//
+// Created by mrhax on 9/23/24.
+//
+#ifndef BLOCK_CUH
+#define BLOCK_CUH
 #include <cstdint>
-#include <iostream>
-#include <string>
-#include <vector>
+#include "../utils/constants.hpp"
+
 
 class Block {
 public:
-    char sPrevHash[65];
-    Block(uint32_t nIndexIn, char sDataIn[512]);
-    char* GetHash();
+    uint32_t blockIndex;
+    char previousBlockHash[65];
+    time_t timeOfCreation;
+    char data[MAX_DATA_SIZE];
+    char currentHash[65];
+    bool valid_nonce;
+    uint64_t verified_nonce;
 
-    uint32_t _nNonce;
-    std::string hash;
-    void MineBlock(uint32_t difficulty);
-    bool isValidNonce(int nonce) const;
-    std::string calculateHashWithNonce(uint32_t nonce) const;
+    Block(const uint32_t block_index, const time_t time_of_creation, char inputData[MAX_DATA_SIZE]);
 
-    uint32_t _nIndex;
-    char *_sData;
-    std::string _sHash;
-    time_t _tTime;
-    
-private:
-    std::string calculateHash(int nonce) const;
-    static void launchCudaMine(Block* block, int blockSize, int threadSize, uint32_t difficulty);
 };
 
-#endif
+__global__ void hashKernel(Block* block, uint32_t base_nonce, uint32_t* output); //TODO change output to a char[65] for SHA-256
+__device__ uint32_t performHash(uint32_t nonce, char* data);
+
+#endif //BLOCK_CUH

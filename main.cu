@@ -1,26 +1,23 @@
-#include <iostream>
+#include "elements/Blockchain.cuh"
 
-#include "elements/Blockchain.hpp"
 
 int main() {
-    auto bChain = Blockchain();
-    cout << "Mining block 1..." << endl;
-    char data1[512] = "Block 1 Data";
-    bChain.AddBlock(Block(1, data1));
-    //
-    // cout << "Mining block 2..." << endl;
-    // bChain.AddBlock(Block(2, "Block 2 Data"));
-    //
-    // cout << "Mining block 3..." << endl;
-    // bChain.AddBlock(Block(3, "Block 3 Data"));
+    // Initialize blockchain with difficulty 4
+    Blockchain blockchain(4);
 
+    blockchain.addBlock({});
+    blockchain.addBlock({});
 
     return 0;
 }
 
 
-// #include <cuda_runtime.h>
-//
+
+
+
+#include <cuda_runtime.h>
+#include <iostream>
+
 // int main() {
 //     cudaDeviceProp prop;
 //     cudaGetDeviceProperties(&prop, 0); // Assuming device 0 (first GPU)
