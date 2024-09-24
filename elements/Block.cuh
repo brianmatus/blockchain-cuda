@@ -16,7 +16,7 @@ public:
     std::string hash;
     void MineBlock(uint32_t difficulty);
     bool isValidNonce(int nonce) const;
-    std::string calculateHashWithNonce(uint32_t nonce) const;
+    void calculateHashWithNonce(uint32_t nonce, char* hashOut) const; // Updated declaration
 
     uint32_t _nIndex;
     char *_sData;

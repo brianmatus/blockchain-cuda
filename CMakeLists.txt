@@ -10,10 +10,10 @@ link_directories(/opt/cuda/lib64)
 #find_package(CUDA REQUIRED)
 
 set (SOURCES
-    main.cu
+        main.cu
         elements/Block.cu
-    elements/Blockchain.cpp
-    libs/sha256.cpp
+        elements/Blockchain.cpp
+        libs/sha256.cu
 )
 
 add_executable(blockchain_cuda ${SOURCES})

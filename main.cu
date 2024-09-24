@@ -6,7 +6,8 @@ int main() {
     auto bChain = Blockchain();
     cout << "Mining block 1..." << endl;
     char data1[512] = "Block 1 Data";
-    bChain.AddBlock(Block(1, data1));
+    Block b1 = Block(1, data1);
+    bChain.AddBlock(b1);
     //
     // cout << "Mining block 2..." << endl;
     // bChain.AddBlock(Block(2, "Block 2 Data"));

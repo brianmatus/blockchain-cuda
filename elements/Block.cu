@@ -6,8 +6,33 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include "../libs/sha256.hpp"
+#include "../libs/sha256.cuh"
 
+// Constructor definition
+Block::Block(uint32_t nIndexIn, char sDataIn[512]) {
+    _nIndex = nIndexIn;
+    _sData = new char[512];
+    strncpy(_sData, sDataIn, 512);
+    _nNonce = 0;
+    _tTime = time(nullptr);  // Record the block creation time
+}
+
+// GetHash function
+char* Block::GetHash() {
+    return const_cast<char*>(_sHash.c_str());
+}
+
+// The mining function
+void Block::MineBlock(uint32_t difficulty) {
+    // For simplicity, using the CPU for now, but launchCudaMine would be called for the GPU version
+    char* d_nonce;
+    launchCudaMine(this, 1, 1, difficulty);
+
+    // Print the resulting nonce for verification
+    // std::cout << "Block mined: " << _sHash << std::endl;
+}
+
+// Helper function to check if a nonce is valid for the given difficulty
 __device__ bool cudaIsValidNonce(const char* hashStr, int difficulty) {
     for (int i = 0; i < difficulty; ++i) {
         if (hashStr[i] != '0') return false;
@@ -15,25 +40,23 @@ __device__ bool cudaIsValidNonce(const char* hashStr, int difficulty) {
     return true;
 }
 
+// Helper function to convert an integer to a string (itoa equivalent)
 __device__ void itoa(uint32_t num, char* buffer) {
     int i = 0;
 
-    // Handle 0 explicitly, since it's a special case
     if (num == 0) {
         buffer[i++] = '0';
         buffer[i] = '\0';
         return;
     }
 
-    // Process individual digits
     while (num > 0) {
-        buffer[i++] = (num % 10) + '0'; // Get last digit
-        num /= 10; // Remove last digit
+        buffer[i++] = (num % 10) + '0';
+        num /= 10;
     }
 
-    buffer[i] = '\0'; // Null-terminate the string
+    buffer[i] = '\0';
 
-    // Reverse the string
     for (int j = 0; j < i / 2; j++) {
         char temp = buffer[j];
         buffer[j] = buffer[i - j - 1];
@@ -41,119 +64,104 @@ __device__ void itoa(uint32_t num, char* buffer) {
     }
 }
 
-__device__ void formatHashString(char* hashStr, uint32_t index, unsigned long long time, const char* sData, uint32_t nonce, const char* prevHash) {
-    int offset = 0;
+// Kernel function for SHA-256 mining on the GPU
+__global__ void sha256_kernel(Block* block, uint32_t start_nonce, uint32_t end_nonce, char* out_nonce, int difficulty) {
+    uint32_t nonce = start_nonce + blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Convert index to string
-    char indexStr[12]; // Enough to hold 32-bit unsigned integer
-    itoa(index, indexStr);
-    while (indexStr[offset] != '\0') {
-        hashStr[offset++] = indexStr[offset];
-    }
+    // Bounds check to ensure the nonce is within the expected range
+    if (nonce >= end_nonce) return;
 
-    // Convert time to string
-    char timeStr[21]; // Enough to hold unsigned long long
-    unsigned long long t = time;
-    int len = 0;
-    do {
-        timeStr[len++] = (t % 10) + '0';
-        t /= 10;
-    } while (t > 0);
-    for (int j = len - 1; j >= 0; j--) {
-        hashStr[offset++] = timeStr[j]; // Reverse the string
-    }
+    char temp_hash[65];  // Local memory on the GPU
 
-    // Copy sData to hashStr
-    while (*sData && offset < 64) {
-        hashStr[offset++] = *sData++;
-    }
+    // Iterate through nonces and check for a valid one
+    while (nonce < end_nonce) {
+        block->calculateHashWithNonce(nonce, temp_hash);
 
-    // Convert nonce to string
-    char nonceStr[12]; // Enough to hold 32-bit unsigned integer
-    itoa(nonce, nonceStr);
-    while (nonceStr[offset] != '\0') {
-        hashStr[offset++] = nonceStr[offset];
-    }
-
-    // Copy prevHash to hashStr
-    while (*prevHash && offset < 64) {
-        hashStr[offset++] = *prevHash++;
-    }
-
-    // Null-terminate the string
-    hashStr[offset] = '\0';
-}
-
-
-
-
-
-__global__ void mineKernel(Block* block, int* foundNonce, int blockSize, int difficulty) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
-
-    char hashStr[65];
-    char sData[512];
-    char sPrevHash[65]; // Changed to accommodate null terminator
-
-    for (int i = idx; i < blockSize && !(*foundNonce); i += stride) {
-        // Manually copy _sData
-        for (int j = 0; j < sizeof(sData) - 1 && block[i]._sData[j] != '\0'; ++j) {
-            sData[j] = block[i]._sData[j];
+        if (cudaIsValidNonce(temp_hash, difficulty)) {
+            // Copy the valid nonce to the output buffer, with bounds checking
+            for (int i = 0; i < 64; i++) {
+                if (i >= 0 && i < 65) {  // Ensure we're within bounds
+                    out_nonce[i] = temp_hash[i];
+                }
+            }
+            return;
         }
-        sData[sizeof(sData) - 1] = '\0'; // Ensure null termination
-
-        // Manually copy sPrevHash
-        for (int j = 0; j < sizeof(sPrevHash) - 1 && block[i].sPrevHash[j] != '\0'; ++j) {
-            sPrevHash[j] = block[i].sPrevHash[j];
-        }
-        sPrevHash[sizeof(sPrevHash) - 1] = '\0'; // Ensure null termination
-
-        // Use the custom format function
-        formatHashString(hashStr, block[i]._nIndex, block[i]._tTime, sData, block[i]._nNonce, sPrevHash);
-
-        // Check if nonce is valid
-        if (cudaIsValidNonce(hashStr, difficulty)) {
-            *foundNonce = i;
-            printf("Found hash %s\n", hashStr);
-        }
+        nonce++;
     }
 }
 
 
-Block::Block(const uint32_t nIndexIn, char sDataIn[512]) : _nIndex(nIndexIn), _sData(sDataIn) {
-    _nNonce = 0;
-    _tTime = time(nullptr);
+// Calculate hash with the given nonce using CUDA-compatible SHA-256
+__device__ void Block::calculateHashWithNonce(uint32_t nonce, char* hashOut) const {
+    // Prepare data for hashing (concatenate index, data, time, and nonce)
+    char nonce_str[21];
+    itoa(nonce, nonce_str);
+
+    // Combine the block data and nonce into a single string
+    std::string input = std::to_string(_nIndex) + _sData + std::to_string(_tTime) + nonce_str;
+
+    // Calculate SHA-256 on the device
+    uint8_t hash[32];  // 32 bytes for SHA-256
+    cuda_sha256((uint8_t*)input.c_str(), input.length(), hash);
+
+    // Convert hash to a hex string
+    for (int i = 0; i < 32; i++) {
+        sprintf(hashOut + (i * 2), "%02x", hash[i]);  // Convert binary hash to hex string
+    }
+    hashOut[64] = '\0'; // Ensure null-termination of the hex string
 }
 
-void Block::MineBlock(uint32_t difficulty) {
-    int blockSize = 1;  // Adjust based on your GPU capability //256
-    int threadSize = 1; // Adjust based on your GPU capability //1024
-    int foundNonce = 0;
 
-    // Launch the CUDA mining kernel
-    launchCudaMine(this, blockSize, threadSize, difficulty);
-}
-
+// Launch GPU mining
 void Block::launchCudaMine(Block* block, int blockSize, int threadSize, uint32_t difficulty) {
-    int* d_foundNonce;
-    cudaMalloc(&d_foundNonce, sizeof(int));
-    cudaMemcpy(d_foundNonce, &block->_nNonce, sizeof(int), cudaMemcpyHostToDevice);
+    char* d_nonce;
+    cudaError_t cudaStatus;
 
-    // Launch kernel
-    mineKernel<<<blockSize, threadSize>>>(block, d_foundNonce, blockSize, difficulty);
+    // Allocate memory for nonce on the device
+    cudaStatus = cudaMalloc(&d_nonce, 65 * sizeof(char));
+    if (cudaStatus != cudaSuccess) {
+        std::cerr << "cudaMalloc failed for d_nonce!" << std::endl;
+        return;
+    }
 
-    cudaMemcpy(&block->_nNonce, d_foundNonce, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaFree(d_foundNonce);
+    // Launch the mining kernel
+    sha256_kernel<<<blockSize, threadSize>>>(block, 0, UINT32_MAX, d_nonce, difficulty);
+
+    // Synchronize the device to ensure the kernel has finished executing
+    cudaStatus = cudaDeviceSynchronize();
+    if (cudaStatus != cudaSuccess) {
+        std::cerr << "Kernel execution failed: " << cudaGetErrorString(cudaStatus) << std::endl;
+        cudaFree(d_nonce);
+        return;
+    }
+
+    // Copy the result back to the host
+    char result_nonce[65];
+    cudaStatus = cudaMemcpy(result_nonce, d_nonce, 65 * sizeof(char), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        std::cerr << "cudaMemcpy failed: " << cudaGetErrorString(cudaStatus) << std::endl;
+        cudaFree(d_nonce);
+        return;
+    }
+
+    // Ensure null-termination of the result_nonce string
+    result_nonce[64] = '\0';  // Null-terminate the result_nonce
+
+    // Print each character as a raw integer (ASCII value)
+    std::cout << "Raw integer values of result_nonce: ";
+    for (int i = 0; i < 65; i++) {
+        std::cout << static_cast<int>(result_nonce[i]) << " ";
+    }
+    std::cout << std::endl;
+
+    // Store the resulting hash in the block
+    block->_sHash = std::string(result_nonce);
+
+    std::cout << "Resulting Nonce: " << result_nonce << std::endl;
+    std::cout << "Block mined: " << block->_sHash << std::endl;
+
+    // Free GPU memory
+    cudaFree(d_nonce);
 }
 
-char *Block::GetHash() {
-    return _sHash.data();
-}
 
-
-std::string Block::calculateHashWithNonce(uint32_t nonce) const {
-    std::stringstream ss;
-    ss << _nIndex << _tTime << _sData << nonce << sPrevHash;
-    return sha256(ss.str());
-}

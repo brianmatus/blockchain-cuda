@@ -1,7 +1,3 @@
-//
-// Created by mrhax on 9/22/24.
-//
-
 #ifndef BLOCKCHAIN_H
 #define BLOCKCHAIN_H
 
@@ -10,7 +6,6 @@
 #include "Block.cuh"
 
 using namespace std;
-
 
 class Blockchain {
 public:
@@ -24,7 +19,5 @@ private:
 
     Block _GetLastBlock() const;
 };
-
-
 
 #endif //BLOCKCHAIN_H

@@ -1,13 +1,6 @@
-//
-// Created by mrhax on 9/22/24.
-//
-
 #include "Blockchain.hpp"
-
 #include <cstring>
-
 #include "Block.cuh"
-
 
 Blockchain::Blockchain() {
     char genesis[512] = "Genesis block";
@@ -15,9 +8,8 @@ Blockchain::Blockchain() {
     _nDifficulty = 5;
 }
 
-
 void Blockchain::AddBlock(Block bNew) {
-    strncpy(bNew.sPrevHash, _GetLastBlock().GetHash(),65);
+    strncpy(bNew.sPrevHash, _GetLastBlock().GetHash(), 65);
     bNew.MineBlock(_nDifficulty);
     _vChain.push_back(bNew);
 }
@@ -25,4 +17,3 @@ void Blockchain::AddBlock(Block bNew) {
 Block Blockchain::_GetLastBlock() const {
     return _vChain.back();
 }
-
