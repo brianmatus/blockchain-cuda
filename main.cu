@@ -4,9 +4,11 @@
 int main() {
     // Initialize blockchain with difficulty 4
     Blockchain blockchain(4);
-
-    blockchain.addBlock({});
-    blockchain.addBlock({});
+    // blockchain.addBlock("a");
+    blockchain.addBlock("ab");
+    // blockchain.addBlock("abc");
+    // blockchain.addBlock("abcd");
+    // blockchain.addBlock({});
 
     return 0;
 }

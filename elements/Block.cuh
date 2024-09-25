@@ -17,7 +17,7 @@ public:
     bool valid_nonce;
     uint64_t verified_nonce;
 
-    Block(const uint32_t block_index, const time_t time_of_creation, char inputData[MAX_DATA_SIZE]);
+    __host__ __device__ Block(const uint32_t block_index, const time_t time_of_creation, char* inputData);
 
 };
 

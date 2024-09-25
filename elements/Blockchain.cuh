@@ -12,7 +12,7 @@
 class Blockchain {
 public:
     Blockchain(int difficulty);
-    void addBlock( char *data);
+    void addBlock( const std::string& data);
 
 private:
     std::vector<Block> blockchain;

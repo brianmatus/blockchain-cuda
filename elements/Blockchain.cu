@@ -9,37 +9,46 @@
 #include <cstdint>
 #include "../utils/constants.hpp"
 
-#define CUDA_CHECK(call)                                                         \
-{                                                                                \
-cudaError_t err = call;                                                      \
-if (err != cudaSuccess) {                                                    \
-std::cerr << "CUDA error: " << cudaGetErrorString(err) << " in " << __FILE__ << " at line " << __LINE__ << std::endl; \
-exit(EXIT_FAILURE);                                                      \
-}                                                                            \
-}
-
 
 // Blockchain constructor
 Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
+    //TODO set difficulty to 0 or 1 just to insert genesis block? or export Blockchain.setDifficulty?
     addBlock("Genesis Block");
 }
 
 // Add block to the blockchain
-void Blockchain::addBlock( char* data) {
-    Block newBlock(blockchain.size(), time(nullptr), data);
-
-    //TODO put in a for loop to iter for more hashes and increase in steps of blockIdx.x * blockDim.x + threadIdx.x
-    //It may be necessary to call another device just to get this variables? Idk
-
+void Blockchain::addBlock( const std::string& data) {
+    //TODO put in a for loop to iter for more hashes
+    // and increase in steps of blockIdx.x * blockDim.x + threadIdx.x (=MINING_TOTAL_THREADS)
     uint32_t base_nonce = 0;
-    uint32_t d_output[MINING_BLOCKS*MINING_BLOCK_THREADS]; //TODO change to a char[65] to contain the sha-256 hash
-    hashKernel<<<MINING_BLOCKS, MINING_BLOCK_THREADS>>>(&newBlock, base_nonce, d_output);
+
+    char dataArr[MAX_DATA_SIZE] = {};
+    memcpy(dataArr, data.c_str(), MAX_DATA_SIZE);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///Block
+    Block h_block(blockchain.size(), time(nullptr), dataArr);
+    Block* d_block;
+    cudaMalloc(&d_block, sizeof(Block));
+    cudaMemcpy(d_block, &h_block, sizeof(Block), cudaMemcpyHostToDevice);
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///Output
+    uint32_t h_output[MINING_TOTAL_THREADS] = {}; //TODO change to a char[65] to contain the sha-256 hash
+
+    uint32_t* d_output;
+    cudaMalloc(&d_output, sizeof(uint32_t) * MINING_TOTAL_THREADS);
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block, base_nonce, d_output);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(h_output, d_output, sizeof(uint32_t)*MINING_TOTAL_THREADS, cudaMemcpyDeviceToHost);
 
     std::cout << "Found XOR hashes: " << std::endl;
-
-    for (uint32_t hash : d_output) {
+    for (const uint32_t hash : h_output) {
         std::cout << hash << std::endl;
     }
 
-    blockchain.push_back(newBlock);
+    cudaFree(d_output);
+    blockchain.push_back(h_block);
 }
