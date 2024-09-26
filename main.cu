@@ -4,14 +4,10 @@
 
 
 int main() {
-    // Blockchain blockchain(4);
-    // blockchain.addBlock("hola");
-
-    std::string input = "Hola como estass";
-    char hash[65] = {};
-    sha256(input.c_str(), input.length(), hash);
-    std::cout << hash << std::endl;
-
+    std::cout << "Start" << std::endl;
+    Blockchain blockchain(4);
+    blockchain.addBlock("hola");
+    std::cout << "End" << std::endl;
     return 0;
 }
 

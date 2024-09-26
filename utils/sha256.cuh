@@ -11,23 +11,23 @@ protected:
     typedef unsigned int uint32;
     typedef unsigned long long uint64;
 
-    const static uint32 sha256_k[];
     static const unsigned int SHA224_256_BLOCK_SIZE = 64; //512/8
 public:
-    void init();
-    void update(const unsigned char *message, unsigned int len);
-    void final(unsigned char *digest);
-    static const unsigned int DIGEST_SIZE = 32; // 256/8
+    __device__ SHA256() {};
+    __device__ void init();
+    void __device__ update(const unsigned char *message, unsigned int len);
+    void __device__ final(unsigned char *digest);
+    static __const__ unsigned int DIGEST_SIZE = 32; // 256/8
 
 protected:
-    void transform(const unsigned char *message, unsigned int block_nb);
+    __device__ void transform(const unsigned char *message, unsigned int block_nb);
     unsigned int m_tot_len;
     unsigned int m_len;
     unsigned char m_block[2*SHA224_256_BLOCK_SIZE];
     uint32 m_h[8];
 };
 
-void sha256(const char* input, unsigned int input_length, char* output);
+__device__ void sha256(const char* input, unsigned int input_length, char* output);
 
 #define SHA2_SHFR(x, n)    (x >> n)
 #define SHA2_ROTR(x, n)   ((x >> n) | (x << ((sizeof(x) << 3) - n)))

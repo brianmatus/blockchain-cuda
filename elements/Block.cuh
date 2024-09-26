@@ -17,11 +17,11 @@ public:
     bool valid_nonce;
     uint64_t verified_nonce;
 
-    __host__ __device__ Block(const uint32_t block_index, const time_t time_of_creation, char* inputData);
+    Block(uint32_t block_index, time_t time_of_creation, char* inputData);
 
 };
 
-__global__ void hashKernel(Block* block, uint32_t base_nonce, uint32_t* output); //TODO change output to a char[65] for SHA-256
+__global__ void hashKernel(char* device_input_data, uint32_t base_nonce, uint32_t nonce_insert_index, char* output); //TODO change output to a char[65] for SHA-256
 __device__ uint32_t performHash(uint32_t nonce, char* data);
 
 #endif //BLOCK_CUH

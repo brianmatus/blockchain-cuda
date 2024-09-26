@@ -3,9 +3,13 @@
 //
 
 #include "sha256.cuh"
+
+#include <c++/14.2.1/cstdint>
 // #include <fstream>
 
-const unsigned int SHA256::sha256_k[64] = //UL = uint32
+__device__ void SHA256::transform(const unsigned char *message, unsigned int block_nb) {
+
+    const unsigned int host_sha256_k[64] = //UL = uint32 //TODO cudaMalloc and memcpy
             {0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
              0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
              0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
@@ -22,8 +26,6 @@ const unsigned int SHA256::sha256_k[64] = //UL = uint32
              0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
              0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
              0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
-
-void SHA256::transform(const unsigned char *message, unsigned int block_nb) {
 
     uint32 w[64];
     uint32 wv[8];
@@ -44,7 +46,7 @@ void SHA256::transform(const unsigned char *message, unsigned int block_nb) {
         }
         for (j = 0; j < 64; j++) {
             t1 = wv[7] + SHA256_F2(wv[4]) + SHA2_CH(wv[4], wv[5], wv[6])
-                + sha256_k[j] + w[j];
+                + host_sha256_k[j] + w[j];
             t2 = SHA256_F1(wv[0]) + SHA2_MAJ(wv[0], wv[1], wv[2]);
             wv[7] = wv[6];
             wv[6] = wv[5];
@@ -61,7 +63,7 @@ void SHA256::transform(const unsigned char *message, unsigned int block_nb) {
     }
 }
 
-void SHA256::init() {
+__device__ void SHA256::init() {
 
     m_h[0] = 0x6a09e667;
     m_h[1] = 0xbb67ae85;
@@ -75,7 +77,7 @@ void SHA256::init() {
     m_tot_len = 0;
 }
 
-void SHA256::update(const unsigned char *message, unsigned int len) {
+void __device__ SHA256::update(const unsigned char *message, unsigned int len) {
 
     unsigned int block_nb;
     unsigned int new_len, rem_len, tmp_len;
@@ -98,7 +100,7 @@ void SHA256::update(const unsigned char *message, unsigned int len) {
     m_tot_len += (block_nb + 1) << 6;
 }
 
-void SHA256::final(unsigned char *digest) {
+void __device__ SHA256::final(unsigned char *digest) {
 
     unsigned int block_nb;
     unsigned int pm_len;
@@ -117,7 +119,7 @@ void SHA256::final(unsigned char *digest) {
     }
 }
 
-void byte_to_hex(unsigned char byte, char* output) {
+void __device__ byte_to_hex(unsigned char byte, char* output) {
     const char hex_digits[] = "0123456789abcdef";
 
     output[0] = hex_digits[(byte >> 4) & 0x0F] ; //Upper part
@@ -126,25 +128,21 @@ void byte_to_hex(unsigned char byte, char* output) {
 }
 
 
-void sha256(const char* input, unsigned int input_length, char* output) {
+void __device__ sha256(const char* input, unsigned int input_length, char* output) {
 
     unsigned char digest[SHA256::DIGEST_SIZE];
-    memset(digest,0,SHA256::DIGEST_SIZE);
+    for (unsigned char & i : digest) {
+        i = 0;
+    }
 
     SHA256 ctx = SHA256();
     ctx.init();
     ctx.update( (unsigned char*)input, input_length);
     ctx.final(digest);
 
-    // char buf[2*SHA256::DIGEST_SIZE+1]; //TODO make sure user pass a buffer with sufficient length, like a getBufferCorrectSize()
-    // buf[2*SHA256::DIGEST_SIZE] = 0;
-    // for (int i = 0; i < SHA256::DIGEST_SIZE; i++)
-    //     sprintf(buf+i*2, "%02x", digest[i]);
-    // return std::string(buf);
-
     output[2*SHA256::DIGEST_SIZE] = 0;
     for (int i = 0; i < SHA256::DIGEST_SIZE; i++)
-        // sprintf(output+i*2, "%02x", digest[i]);
-        byte_to_hex(digest[i], output+i*2);
+    // sprintf(output+i*2, "%02x", digest[i]);
+    byte_to_hex(digest[i], output+i*2);
 
 }
