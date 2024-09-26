@@ -1,14 +1,16 @@
 #include "elements/Blockchain.cuh"
+#include "utils/sha256.cuh"
+#include <iostream>
 
 
 int main() {
-    // Initialize blockchain with difficulty 4
-    Blockchain blockchain(4);
-    // blockchain.addBlock("a");
-    blockchain.addBlock("ab");
-    // blockchain.addBlock("abc");
-    // blockchain.addBlock("abcd");
-    // blockchain.addBlock({});
+    // Blockchain blockchain(4);
+    // blockchain.addBlock("hola");
+
+    std::string input = "Hola como estass";
+    char hash[65] = {};
+    sha256(input.c_str(), input.length(), hash);
+    std::cout << hash << std::endl;
 
     return 0;
 }
