@@ -3,8 +3,7 @@
 //
 
 #include "sha256.cuh"
-#include <cstring>
-#include <fstream>
+// #include <fstream>
 
 const unsigned int SHA256::sha256_k[64] = //UL = uint32
             {0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
@@ -24,8 +23,8 @@ const unsigned int SHA256::sha256_k[64] = //UL = uint32
              0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
              0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-void SHA256::transform(const unsigned char *message, unsigned int block_nb)
-{
+void SHA256::transform(const unsigned char *message, unsigned int block_nb) {
+
     uint32 w[64];
     uint32 wv[8];
     uint32 t1, t2;
@@ -62,8 +61,8 @@ void SHA256::transform(const unsigned char *message, unsigned int block_nb)
     }
 }
 
-void SHA256::init()
-{
+void SHA256::init() {
+
     m_h[0] = 0x6a09e667;
     m_h[1] = 0xbb67ae85;
     m_h[2] = 0x3c6ef372;
@@ -76,8 +75,8 @@ void SHA256::init()
     m_tot_len = 0;
 }
 
-void SHA256::update(const unsigned char *message, unsigned int len)
-{
+void SHA256::update(const unsigned char *message, unsigned int len) {
+
     unsigned int block_nb;
     unsigned int new_len, rem_len, tmp_len;
     const unsigned char *shifted_message;
@@ -99,8 +98,8 @@ void SHA256::update(const unsigned char *message, unsigned int len)
     m_tot_len += (block_nb + 1) << 6;
 }
 
-void SHA256::final(unsigned char *digest)
-{
+void SHA256::final(unsigned char *digest) {
+
     unsigned int block_nb;
     unsigned int pm_len;
     unsigned int len_b;
@@ -118,8 +117,17 @@ void SHA256::final(unsigned char *digest)
     }
 }
 
-void sha256(const char* input, unsigned int input_length, char* output)
-{
+void byte_to_hex(unsigned char byte, char* output) {
+    const char hex_digits[] = "0123456789abcdef";
+
+    output[0] = hex_digits[(byte >> 4) & 0x0F] ; //Upper part
+    output[1] = hex_digits[byte & 0x0F];         //Lower part
+
+}
+
+
+void sha256(const char* input, unsigned int input_length, char* output) {
+
     unsigned char digest[SHA256::DIGEST_SIZE];
     memset(digest,0,SHA256::DIGEST_SIZE);
 
@@ -136,6 +144,7 @@ void sha256(const char* input, unsigned int input_length, char* output)
 
     output[2*SHA256::DIGEST_SIZE] = 0;
     for (int i = 0; i < SHA256::DIGEST_SIZE; i++)
-        sprintf(output+i*2, "%02x", digest[i]);
+        // sprintf(output+i*2, "%02x", digest[i]);
+        byte_to_hex(digest[i], output+i*2);
 
 }
