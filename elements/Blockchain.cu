@@ -11,9 +11,6 @@
 #include <sstream>
 #include "../utils/sha256.cuh"
 
-__device__ int stop_flag = 0;
-
-
 // Blockchain constructor
 Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
     const std::string s = "Genesis Block";
@@ -32,8 +29,9 @@ void Blockchain::addBlock( const std::string& data) {
 
     std::cout << "addBlock called" << std::endl;
 
-
-    uint32_t base_nonce = 0;
+    // Reset the stop_flag before launching the next kernel
+    int reset_value = 0;
+    cudaMemcpyToSymbol(stop_flag, &reset_value, sizeof(int));
 
     char dataArr[MAX_DATA_SIZE] = {};
     memcpy(dataArr, data.c_str(), data.length());
@@ -63,7 +61,7 @@ void Blockchain::addBlock( const std::string& data) {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::cout << "Calling kernel..." << std::endl;
-    hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, base_nonce, resulting.length(), d_output);
+    hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, MINING_TOTAL_THREADS, resulting.length(), d_output);
     cudaDeviceSynchronize();
 
     cudaMemcpy(h_output, d_output, sizeof(char)*65, cudaMemcpyDeviceToHost);

@@ -1,5 +1,4 @@
 #include "elements/Blockchain.cuh"
-#include "utils/sha256.cuh"
 #include <iostream>
 
 

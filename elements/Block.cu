@@ -6,6 +6,7 @@
 #include "../utils/sha256.cuh"
 #include <cstring>
 
+__device__ int stop_flag = 0;
 
 Block::Block(const uint32_t block_index, const time_t time_of_creation, char* inputData) : blockIndex(block_index), timeOfCreation(time_of_creation) {
     verified_nonce = 0;
@@ -29,19 +30,19 @@ __device__ void insert_nonce(char* device_input_data, uint32_t nonce, uint32_t n
 }
 
 
-__global__ void hashKernel(char* device_input_data, uint32_t base_nonce, uint32_t nonce_insert_index, char* output) {
+__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    uint32_t nonce = base_nonce + idx;
+    uint32_t nonce = nonce_increment + idx;
 
     //TODO change base_nonce to a nonce_increment=MINING_TOTAL_THREADS
     //TODO while not found and global flag is false:
     // Keep going in increments of nonce_increment. Set global flag if found
 
     //TODO uncomment
-    // insert_nonce(device_input_data, nonce, nonce_insert_index);
+    insert_nonce(device_input_data, nonce, nonce_insert_index);
 
     char resulting_hash[65] = {};
-    sha256(device_input_data, nonce_insert_index, resulting_hash); // nonce_insert_index + 4 because of nonce
+    sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
 
     for (int i = 0; i < 65; ++i) {
         output[i] = resulting_hash[i];
