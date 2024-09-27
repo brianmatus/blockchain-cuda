@@ -11,6 +11,7 @@
 #include <sstream>
 #include "../utils/sha256.cuh"
 
+
 // Blockchain constructor
 Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
     const std::string s = "Genesis Block";
@@ -24,14 +25,12 @@ Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
 
 // Add block to the blockchain
 void Blockchain::addBlock( const std::string& data) {
-    //TODO put in a for loop to iter for more hashes
-    // and increase in steps of blockIdx.x * blockDim.x + threadIdx.x (=MINING_TOTAL_THREADS)
+    // Reset vars before launching the next kernel
+    uint32_t h_stop_flag = 0;
+    cudaMemcpyToSymbol(stop_flag, &h_stop_flag, sizeof(uint32_t));
 
-    std::cout << "addBlock called" << std::endl;
-
-    // Reset the stop_flag before launching the next kernel
-    int reset_value = 0;
-    cudaMemcpyToSymbol(stop_flag, &reset_value, sizeof(int));
+    uint32_t h_resulting_nonce = 0;
+    cudaMemcpyToSymbol(resulting_nonce, &h_resulting_nonce, sizeof(uint32_t));
 
     char dataArr[MAX_DATA_SIZE] = {};
     memcpy(dataArr, data.c_str(), data.length());
@@ -59,15 +58,18 @@ void Blockchain::addBlock( const std::string& data) {
     cudaMalloc(&d_output, sizeof(char) * 65);
     cudaMemset(d_output, 0, sizeof(char) * 65);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    std::cout << "Calling kernel..." << std::endl;
-    hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, MINING_TOTAL_THREADS, resulting.length(), d_output);
+    hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, MINING_TOTAL_THREADS, resulting.length(), d_output, difficulty);
     cudaDeviceSynchronize();
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     cudaMemcpy(h_output, d_output, sizeof(char)*65, cudaMemcpyDeviceToHost);
+    cudaMemcpyFromSymbol(&h_resulting_nonce, resulting_nonce, sizeof(uint32_t));
 
+    std::cout << "----------------------------------------------------" << std::endl;
     std::cout << "Resulting hash" << std::endl;
     std::cout << h_output << std::endl;
+    std::cout << "For nonce:" << std::endl;
+    std::cout << h_resulting_nonce << std::endl;
 
     cudaFree(d_output);
     blockchain.push_back(h_block);

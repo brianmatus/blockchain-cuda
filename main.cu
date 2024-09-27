@@ -3,10 +3,8 @@
 
 
 int main() {
-    std::cout << "Start" << std::endl;
-    Blockchain blockchain(4);
+    Blockchain blockchain(5);
     blockchain.addBlock("hola");
-    std::cout << "End" << std::endl;
     return 0;
 }
 

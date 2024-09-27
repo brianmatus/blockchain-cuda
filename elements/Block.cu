@@ -6,7 +6,8 @@
 #include "../utils/sha256.cuh"
 #include <cstring>
 
-__device__ int stop_flag = 0;
+__device__ uint32_t stop_flag = 0;
+__device__ uint32_t resulting_nonce = 0;
 
 Block::Block(const uint32_t block_index, const time_t time_of_creation, char* inputData) : blockIndex(block_index), timeOfCreation(time_of_creation) {
     verified_nonce = 0;
@@ -30,23 +31,51 @@ __device__ void insert_nonce(char* device_input_data, uint32_t nonce, uint32_t n
 }
 
 
-__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    uint32_t nonce = nonce_increment + idx;
+__device__ bool check_leading_zeros(const char* hash, uint32_t num_zeros) {
+    for (int i = 0; i < num_zeros; i++) {
+        if (hash[i] != '0') {
+            return false;
+        }
+    }
+    return true;
+}
 
+
+__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    uint32_t nonce = 0;
     //TODO change base_nonce to a nonce_increment=MINING_TOTAL_THREADS
     //TODO while not found and global flag is false:
     // Keep going in increments of nonce_increment. Set global flag if found
 
-    //TODO uncomment
-    insert_nonce(device_input_data, nonce, nonce_insert_index);
+    int deleteme_counter = 0;
+    uint32_t nonce_base = 0;
+    while (atomicCAS(&stop_flag, 0, 0) == 0) { //TODO change to while true and check every n iters to avoid accessing the slow global memory every iter
+        nonce = nonce_base + idx;
 
-    char resulting_hash[65] = {};
-    sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
+        insert_nonce(device_input_data, nonce, nonce_insert_index);
+        char resulting_hash[65] = {};
+        sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
 
-    for (int i = 0; i < 65; ++i) {
-        output[i] = resulting_hash[i];
+        bool is_valid = check_leading_zeros(resulting_hash, difficulty);
+        if (!is_valid) {
+            nonce_base += nonce_increment;
+            continue;
+        }
+
+        //Valid hash found
+        for (int i = 0; i < 65; ++i) {
+            output[i] = resulting_hash[i];
+        }
+        atomicExch(&resulting_nonce, nonce); //TODO atomicExch needed?
+        break;
     }
+
+
+
+
+
 }
 
 //TODO change to sha256 later
