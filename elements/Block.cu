@@ -3,6 +3,9 @@
 //
 
 #include "Block.cuh"
+
+#include <cstdio>
+
 #include "../utils/sha256.cuh"
 #include <cstring>
 
@@ -53,23 +56,23 @@ __global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, ui
     uint32_t nonce_base = 0;
     while (atomicCAS(&stop_flag, 0, 0) == 0) { //TODO change to while true and check every n iters to avoid accessing the slow global memory every iter
         nonce = nonce_base + idx;
-
+        // printf("idx = %d, nonce = %d\n", idx, nonce);
         insert_nonce(device_input_data, nonce, nonce_insert_index);
         char resulting_hash[65] = {};
         sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
-
-        bool is_valid = check_leading_zeros(resulting_hash, difficulty);
-        if (!is_valid) {
+        if (!check_leading_zeros(resulting_hash, difficulty)) {
             nonce_base += nonce_increment;
+            __syncthreads();
             continue;
         }
-
         //Valid hash found
+        atomicExch(&stop_flag, 1);
+        __syncthreads();
+        printf("----------------------------------------------\nBlock successfully mined by idx:%i nonce:%i\n%s\n", idx, nonce, device_input_data);
         for (int i = 0; i < 65; ++i) {
             output[i] = resulting_hash[i];
         }
         atomicExch(&resulting_nonce, nonce); //TODO atomicExch needed?
-        atomicExch(&stop_flag, 1);
         break;
     }
 
