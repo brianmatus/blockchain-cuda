@@ -69,6 +69,7 @@ __global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, ui
             output[i] = resulting_hash[i];
         }
         atomicExch(&resulting_nonce, nonce); //TODO atomicExch needed?
+        atomicExch(&stop_flag, 1);
         break;
     }
 

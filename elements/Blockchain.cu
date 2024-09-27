@@ -6,11 +6,10 @@
 #include "Block.cuh"
 #include <cuda_runtime.h>
 #include <iostream>
+#include <sstream>
 #include <cstdint>
 #include "../utils/constants.hpp"
-#include <sstream>
-#include "../utils/sha256.cuh"
-
+#include <chrono>
 
 // Blockchain constructor
 Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
@@ -58,8 +57,13 @@ void Blockchain::addBlock( const std::string& data) {
     cudaMalloc(&d_output, sizeof(char) * 65);
     cudaMemset(d_output, 0, sizeof(char) * 65);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    auto start = std::chrono::high_resolution_clock::now();
     hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, MINING_TOTAL_THREADS, resulting.length(), d_output, difficulty);
     cudaDeviceSynchronize();
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Time taken: " << duration.count() << " seconds." << std::endl;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     cudaMemcpy(h_output, d_output, sizeof(char)*65, cudaMemcpyDeviceToHost);
