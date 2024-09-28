@@ -36,8 +36,9 @@ void Blockchain::addBlock( const std::string& data) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///Block
-    Block h_block(blockchain.size(), time(nullptr), dataArr);
-    memcpy(h_block.previousBlockHash, blockchain.back().currentHash, 64); //TODO is already null terminated?
+    // Block h_block(blockchain.size(), time(nullptr), dataArr); //FIXME uncomment
+    Block h_block(blockchain.size(), 1727481184, dataArr);
+    memcpy(h_block.previousBlockHash, blockchain.back().currentHash, 64);
 
     std::stringstream ss;
     ss << h_block.blockIndex  << "\n" << h_block.timeOfCreation<< "\n" << h_block.previousBlockHash<< "\n" << dataArr << "\n";
@@ -51,7 +52,7 @@ void Blockchain::addBlock( const std::string& data) {
     cudaMemcpy(d_block_data, resulting.c_str(), resulting.length(), cudaMemcpyHostToDevice);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///Output
-    char h_output[65] = {}; //TODO change to a char[65] to contain the sha-256 hash
+    char h_output[65] = {};
 
     char* d_output;
     cudaMalloc(&d_output, sizeof(char) * 65);

@@ -21,7 +21,7 @@ public:
 
 };
 
-__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty); //TODO change output to a char[65] for SHA-256
+__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty);
 __device__ uint32_t performHash(uint32_t nonce, char* data);
 
 

@@ -23,7 +23,6 @@ set_target_properties(blockchain_cuda PROPERTIES
 )
 
 
-#TODO  Needed?
 # Link the C++ standard library
 target_link_libraries(blockchain_cuda
         PRIVATE

@@ -46,43 +46,38 @@ __device__ bool check_leading_zeros(const char* hash, uint32_t num_zeros) {
 
 __global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
     uint32_t nonce = 0;
-    //TODO change base_nonce to a nonce_increment=MINING_TOTAL_THREADS
-    //TODO while not found and global flag is false:
-    // Keep going in increments of nonce_increment. Set global flag if found
+    uint32_t nonce_base = 809000; //FIXME nonce_base = 0;
 
-    int deleteme_counter = 0;
-    uint32_t nonce_base = 0;
-    while (atomicCAS(&stop_flag, 0, 0) == 0) { //TODO change to while true and check every n iters to avoid accessing the slow global memory every iter
+    while (atomicCAS(&stop_flag, 0, 0) == 0) {
         nonce = nonce_base + idx;
-        // printf("idx = %d, nonce = %d\n", idx, nonce);
+        if (nonce > 809170) {//FIXME deleteme
+            nonce_base = 809000;
+        }
         insert_nonce(device_input_data, nonce, nonce_insert_index);
+
         char resulting_hash[65] = {};
         sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
-        if (!check_leading_zeros(resulting_hash, difficulty)) {
-            nonce_base += nonce_increment;
-            __syncthreads();
-            continue;
+
+        if (nonce > 809140) {
+            printf("nonce:%i, resulting_hash:%s\n", nonce, resulting_hash);
         }
-        //Valid hash found
-        atomicExch(&stop_flag, 1);
-        __syncthreads();
-        printf("----------------------------------------------\nBlock successfully mined by idx:%i nonce:%i\n%s\n", idx, nonce, device_input_data);
-        for (int i = 0; i < 65; ++i) {
-            output[i] = resulting_hash[i];
+
+
+        if (check_leading_zeros(resulting_hash, difficulty)) {
+            if (atomicCAS(&stop_flag, 0, 1) == 0) {
+                printf("----------------------------------------------\nBlock successfully mined by idx:%i nonce:%i\n%s\n", idx, nonce, device_input_data);
+                for (int i = 0; i < 65; ++i) {
+                    output[i] = resulting_hash[i];
+                }
+                atomicExch(&resulting_nonce, nonce);
+            }
+            break;
         }
-        atomicExch(&resulting_nonce, nonce); //TODO atomicExch needed?
-        break;
+        nonce_base += nonce_increment;
     }
-
-
-
-
-
 }
 
-//TODO change to sha256 later
 __device__ uint32_t performHash(uint32_t nonce, char* data) {
     uint32_t hash = nonce;
     for (int i = 0; i < MAX_DATA_SIZE; ++i) {
