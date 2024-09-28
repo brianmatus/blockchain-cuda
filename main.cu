@@ -3,7 +3,7 @@
 
 
 int main() {
-    Blockchain blockchain(6);
+    Blockchain blockchain(7);
     blockchain.addBlock("hola");
     return 0;
 }

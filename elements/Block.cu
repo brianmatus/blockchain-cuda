@@ -8,6 +8,8 @@
 
 #include "../utils/sha256.cuh"
 #include <cstring>
+#include <bits/ranges_base.h>
+#include <bits/range_access.h>
 
 __device__ uint32_t stop_flag = 0;
 __device__ uint32_t resulting_nonce = 0;
@@ -47,26 +49,25 @@ __device__ bool check_leading_zeros(const char* hash, uint32_t num_zeros) {
 __global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t nonce = 0;
-    uint32_t nonce_base = 809000; //FIXME nonce_base = 0;
+    uint32_t nonce_base = 0; //FIXME nonce_base = 0;
+
+    char local_data[MAX_DATA_SIZE];
+    for (int i = 0; i < MAX_DATA_SIZE; ++i) {
+        local_data[i] = device_input_data[i];
+    }
 
     while (atomicCAS(&stop_flag, 0, 0) == 0) {
         nonce = nonce_base + idx;
-        if (nonce > 809170) {//FIXME deleteme
-            nonce_base = 809000;
-        }
-        insert_nonce(device_input_data, nonce, nonce_insert_index);
+        insert_nonce(local_data, nonce, nonce_insert_index);
 
         char resulting_hash[65] = {};
-        sha256(device_input_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
+        sha256(local_data, nonce_insert_index + 4, resulting_hash); // nonce_insert_index + 4 because of nonce
 
-        if (nonce > 809140) {
-            printf("nonce:%i, resulting_hash:%s\n", nonce, resulting_hash);
-        }
-
+        // printf("nonce:%i, resulting_hash:%s\n", nonce, resulting_hash);
 
         if (check_leading_zeros(resulting_hash, difficulty)) {
             if (atomicCAS(&stop_flag, 0, 1) == 0) {
-                printf("----------------------------------------------\nBlock successfully mined by idx:%i nonce:%i\n%s\n", idx, nonce, device_input_data);
+                printf("----------------------------------------------\nBlock successfully mined by idx:%i nonce:%i\n%s\n", idx, nonce, local_data);
                 for (int i = 0; i < 65; ++i) {
                     output[i] = resulting_hash[i];
                 }
