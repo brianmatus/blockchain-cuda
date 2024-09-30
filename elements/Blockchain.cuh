@@ -11,7 +11,7 @@
 
 class Blockchain {
 public:
-    Blockchain(int difficulty);
+    explicit Blockchain(int difficulty);
     void addBlock( const std::string& data);
 
 private:

@@ -17,12 +17,12 @@ public:
     bool valid_nonce;
     uint64_t verified_nonce;
 
-    Block(uint32_t block_index, time_t time_of_creation, char* inputData);
+    Block(uint32_t block_index, time_t time_of_creation, const char* inputData);
 
 };
 
-__global__ void hashKernel(char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty);
-__device__ uint32_t performHash(uint32_t nonce, char* data);
+__global__ void hashKernel(const char* device_input_data, uint32_t nonce_increment, uint32_t nonce_insert_index, char* output, uint32_t difficulty);
+__device__ uint32_t performHash(uint32_t nonce, const char* data);
 
 
 extern __device__ uint32_t stop_flag;

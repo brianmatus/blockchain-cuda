@@ -12,7 +12,7 @@
 #include <chrono>
 
 // Blockchain constructor
-Blockchain::Blockchain(int difficulty) : difficulty(difficulty) {
+Blockchain::Blockchain(const int difficulty) : difficulty(difficulty) {
     const std::string s = "Genesis Block";
     char dataArr[MAX_DATA_SIZE] = {};
     memcpy(dataArr, s.c_str(), s.length());
@@ -36,8 +36,9 @@ void Blockchain::addBlock( const std::string& data) {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///Block
-    // Block h_block(blockchain.size(), time(nullptr), dataArr); //FIXME uncomment
+    // Block h_block(blockchain.size(), time(nullptr), dataArr); //FIXME swap of real-time use
     Block h_block(blockchain.size(), 1727481184, dataArr);
+
     memcpy(h_block.previousBlockHash, blockchain.back().currentHash, 64);
 
     std::stringstream ss;
@@ -58,12 +59,12 @@ void Blockchain::addBlock( const std::string& data) {
     cudaMalloc(&d_output, sizeof(char) * 65);
     cudaMemset(d_output, 0, sizeof(char) * 65);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    auto start = std::chrono::high_resolution_clock::now();
+    const auto start = std::chrono::high_resolution_clock::now();
     hashKernel<<<MINING_SM_BLOCKS, MINING_BLOCK_THREADS>>>(d_block_data, MINING_TOTAL_THREADS, resulting.length(), d_output, difficulty);
     cudaDeviceSynchronize();
-    auto end = std::chrono::high_resolution_clock::now();
+    const auto end = std::chrono::high_resolution_clock::now();
 
-    std::chrono::duration<double> duration = end - start;
+    const std::chrono::duration<double> duration = end - start;
     std::cout << "Time taken: " << duration.count() << " seconds." << std::endl;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
